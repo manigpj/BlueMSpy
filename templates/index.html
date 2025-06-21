@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlueSpy Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .device-card,
+        .recording-card {
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .device-card:hover,
+        .recording-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .audio-player {
+            width: 100%;
+        }
+        
+        .status-badge {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+        }
+        
+        .action-buttons {
+            margin-top: 0.5rem;
+        }
+        
+        .scan-button {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 1000;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .scan-button.scanning {
+            background-color: #dc3545;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+        
+        .data-tabs {
+            margin-top: 1rem;
+        }
+        
+        .media-preview {
+            max-width: 200px;
+            max-height: 200px;
+            object-fit: cover;
+            margin: 0.5rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .media-preview:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .recording-indicator {
+            color: red;
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            50% {
+                opacity: 0;
+            }
+        }
+        
+        .device-info {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .signal-strength {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .signal-bar {
+            width: 100px;
+            height: 8px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .signal-level {
+            height: 100%;
+            background-color: #28a745;
+            transition: width 0.3s ease;
+        }
+        
+        .loading-spinner {
+            display: none;
+            margin: 1rem auto;
+        }
+        
+        .loading-spinner.active {
+            display: block;
+        }
+        
+        .device-monitor {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .connection-status {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+        }
+        
+        .error-container {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #fee;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        .device-card.active {
+            border: 2px solid #007bff;
+        }
+        
+        .signal-strength-indicator {
+            width: 50px;
+            height: 20px;
+            background: #eee;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .screen-preview {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .file-explorer {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        
+        .folder-item {
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+        
+        .folder-item:hover {
+            background-color: #f0f0f0;
+        }
+        
+        .file-item {
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            background-color: #f8f9fa;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
+    <style>
+        /* Floating Name Animation */
+        
+        .floating-name {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            font-size: 1.2rem;
+            color: #007bff;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            animation: float 3s ease-in-out infinite;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 20px;
+            border-radius: 20px;
+            backdrop-filter: blur(5px);
+        }
+        
+        @keyframes float {
+            0% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+            100% {
+                transform: translateY(0px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Add floating name after navbar -->
+    <div class="floating-name">
+        Manish Kumar
+    </div>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container">
+            <span class="navbar-brand mb-0 h1">BlueSpy Dashboard</span>
+            <div class="text-light">
+                <span id="devices-count" class="me-3">
+                    <i class="bi bi-bluetooth"></i> Devices: 0
+                </span>
+                <span id="recordings-count">
+                    <i class="bi bi-mic"></i> Recordings: 0
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="status-badge">
+        <div class="alert alert-info" role="alert" id="status-message">
+            <i class="bi bi-info-circle"></i> Ready
+        </div>
+    </div>
+
+    <div class="connection-status">
+        <span class="badge bg-success" id="wsStatus">Connected</span>
+    </div>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Bluetooth Devices</h5>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="autoConnectToggle">
+                            <label class="form-check-label" for="autoConnectToggle">Auto-Connect Nearest</label>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="loading-spinner" id="scanSpinner">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Scanning...</span>
+                            </div>
+                        </div>
+                        <div id="devicesList" class="list-group">
+                            <!-- Devices will be listed here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Device Data Section -->
+                <div class="card mb-4" id="deviceDataSection" style="display: none;">
+                    <div class="card-header">
+                        <h5 class="mb-0">Device Data</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="device-info" id="deviceInfo">
+                            <!-- Device info will be shown here -->
+                        </div>
+                        <ul class="nav nav-tabs" id="dataTabs" role="tablist">
+                            <li class="nav-item">
+                                <a class="nav-link active" id="contacts-tab" data-bs-toggle="tab" href="#contacts" role="tab">
+                                    <i class="bi bi-person-lines-fill"></i> Contacts
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="calls-tab" data-bs-toggle="tab" href="#calls" role="tab">
+                                    <i class="bi bi-telephone"></i> Call History
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="messages-tab" data-bs-toggle="tab" href="#messages" role="tab">
+                                    <i class="bi bi-chat-dots"></i> Messages
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="files-tab" data-bs-toggle="tab" href="#files" role="tab">
+                                    <i class="bi bi-folder"></i> Files
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="screen-tab" data-bs-toggle="tab" href="#screen" role="tab">
+                                    <i class="bi bi-display"></i> Live Screen
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="media-tab" data-bs-toggle="tab" href="#media" role="tab">
+                                    <i class="bi bi-images"></i> Media
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="recordings-tab" data-bs-toggle="tab" href="#recordings" role="tab">
+                                    <i class="bi bi-mic"></i> Recordings
+                                </a>
+                            </li>
+                        </ul>
+                        <div class="tab-content mt-3" id="dataTabContent">
+                            <div class="tab-pane fade show active" id="contacts" role="tabpanel">
+                                <div class="loading-spinner" id="contactsSpinner">
+                                    <div class="spinner-border text-primary" role="status"></div>
+                                </div>
+                                <div id="contactsList"></div>
+                            </div>
+                            <div class="tab-pane fade" id="calls" role="tabpanel">
+                                <div class="loading-spinner" id="callsSpinner">
+                                    <div class="spinner-border text-primary" role="status"></div>
+                                </div>
+                                <div id="callsList"></div>
+                            </div>
+                            <div class="tab-pane fade" id="messages" role="tabpanel">
+                                <div class="loading-spinner" id="messagesSpinner">
+                                    <div class="spinner-border text-primary" role="status"></div>
+                                </div>
+                                <div id="messagesList"></div>
+                            </div>
+                            <div class="tab-pane fade" id="files" role="tabpanel">
+                                <div class="loading-spinner" id="filesSpinner">
+                                    <div class="spinner-border text-primary" role="status"></div>
+                                </div>
+                                <div class="d-flex mb-3">
+                                    <button class="btn btn-sm btn-secondary me-2" id="backButton">
+                                        <i class="bi bi-arrow-left"></i> Back
+                                    </button>
+                                    <div class="flex-grow-1 p-2 bg-light rounded" id="currentPath">/</div>
+                                </div>
+                                <div class="file-explorer" id="fileExplorer"></div>
+                            </div>
+                            <div class="tab-pane fade" id="screen" role="tabpanel">
+                                <div class="loading-spinner" id="screenSpinner">
+                                    <div class="spinner-border text-primary" role="status"></div>
+                                </div>
+                                <div class="text-center">
+                                    <img id="screenPreview" class="screen-preview mt-3" src="" alt="Device Screen">
+                                    <div class="btn-group mt-3">
+                                        <button class="btn btn-primary" id="startScreenBtn">
+                                            <i class="bi bi-play-circle"></i> Start Stream
+                                        </button>
+                                        <button class="btn btn-danger" id="stopScreenBtn" style="display: none;">
+                                            <i class="bi bi-stop-circle"></i> Stop Stream
+                                        </button>
+                                        <button class="btn btn-success" id="captureScreenBtn">
+                                            <i class="bi bi-camera"></i> Capture
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="media" role="tabpanel">
+                                <div class="loading-spinner" id="mediaSpinner">
+                                    <div class="spinner-border text-primary" role="status"></div>
+                                </div>
+                                <div id="mediaList" class="d-flex flex-wrap"></div>
+                            </div>
+                            <div class="tab-pane fade" id="recordings" role="tabpanel">
+                                <div class="loading-spinner" id="recordingsSpinner">
+                                    <div class="spinner-border text-primary" role="status"></div>
+                                </div>
+                                <div id="recordingsList"></div>
+                                <div class="mt-3">
+                                    <button class="btn btn-danger" id="startRecordingBtn">
+                                        <i class="bi bi-record-circle"></i> Start Recording
+                                    </button>
+                                    <button class="btn btn-secondary" id="stopRecordingBtn" style="display: none;">
+                                        <i class="bi bi-stop-circle"></i> Stop Recording
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Recordings</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="recordings-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="error-container" id="errorLog"></div>
+
+    <button class="btn btn-primary scan-button" id="scan-button">
+        <i class="bi bi-search"></i>
+    </button>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let isScanning = false;
+        let currentDevice = null;
+        let isRecording = false;
+        let ws = null;
+        let reconnectAttempts = 0;
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status-message');
+            statusEl.className = `alert alert-${type}`;
+            statusEl.innerHTML = `<i class="bi bi-info-circle"></i> ${message}`;
+        }
+
+        function showSpinner(spinnerId) {
+            document.getElementById(spinnerId).classList.add('active');
+        }
+
+        function hideSpinner(spinnerId) {
+            document.getElementById(spinnerId).classList.remove('active');
+        }
+
+        async function updateDevices() {
+            try {
+                showSpinner('scanSpinner');
+                const response = await fetch('/api/scan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        auto_connect: document.getElementById('autoConnectToggle').checked
+                    })
+                });
+
+                if (!response.ok) throw new Error('Network response was not ok');
+
+                const data = await response.json();
+                renderDevices(data.devices);
+            } catch (error) {
+                logError(`Failed to update devices: ${error.message}`);
+            } finally {
+                hideSpinner('scanSpinner');
+            }
+        }
+
+        function viewDeviceData(address) {
+            currentDevice = address;
+            document.getElementById('deviceDataSection').style.display = 'block';
+            updateDeviceData();
+        }
+
+        function updateDeviceData() {
+            if (!currentDevice) return;
+
+            // Show all spinners
+            ['contactsSpinner', 'callsSpinner', 'mediaSpinner', 'recordingsSpinner'].forEach(showSpinner);
+
+            fetch(`/api/device/${currentDevice}/data`)
+                .then(response => response.json())
+                .then(data => {
+                    // Update device info
+                    const deviceInfo = document.getElementById('deviceInfo');
+                    const captcha = currentDevice.replace(/:/g, '').slice(-6);
+                    deviceInfo.innerHTML = `
+                        <h6>Device Information</h6>
+                        <p class="mb-1"><strong>Address:</strong> <span class="device-address">${currentDevice}</span>
+                            <button class="btn btn-sm btn-outline-secondary ms-2 copy-address-btn" data-address="${currentDevice}" title="Copy Bluetooth Address">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                            <span class="ms-2 badge bg-warning text-dark" id="address-captcha">${captcha}</span>
+                            <span class="small text-muted ms-1" title="Captcha: last 6 hex digits of address">(Captcha)</span>
+                        </p>
+                        <p class="mb-1"><strong>Status:</strong> <span class="badge bg-success">Connected</span></p>
+                        <p class="mb-0"><strong>Last Updated:</strong> ${new Date().toLocaleString()}</p>
+                    `;
+
+                    document.querySelectorAll('.copy-address-btn').forEach(btn => {
+                        btn.addEventListener('click', function(e) {
+                            const address = this.getAttribute('data-address');
+                            navigator.clipboard.writeText(address);
+                            updateStatus('Bluetooth address copied!', 'success');
+                            e.stopPropagation();
+                        });
+                    });
+
+                    // Update contacts
+                    const contactsList = document.getElementById('contactsList');
+                    contactsList.innerHTML = data.contacts.map(contact => `
+                        <div class="card mb-2">
+                            <div class="card-body">
+                                <h6 class="card-title">${contact.name}</h6>
+                                <a href="${contact.path}" class="btn btn-sm btn-primary" download>
+                                    <i class="bi bi-download"></i> Download
+                                </a>
+                            </div>
+                        </div>
+                    `).join('');
+
+                    // Update call history
+                    const callsList = document.getElementById('callsList');
+                    callsList.innerHTML = data.call_history.map(call => `
+                        <div class="card mb-2">
+                            <div class="card-body">
+                                <h6 class="card-title">${call.name}</h6>
+                                <a href="${call.path}" class="btn btn-sm btn-primary" download>
+                                    <i class="bi bi-download"></i> Download
+                                </a>
+                            </div>
+                        </div>
+                    `).join('');
+
+                    // Update media files
+                    const mediaList = document.getElementById('mediaList');
+                    mediaList.innerHTML = data.media.map(media => `
+                        <div class="card m-2" style="width: 200px;">
+                            <img src="${media.path}" class="card-img-top media-preview" alt="${media.name}">
+                            <div class="card-body">
+                                <h6 class="card-title">${media.name}</h6>
+                                <a href="${media.path}" class="btn btn-sm btn-primary" download>
+                                    <i class="bi bi-download"></i> Download
+                                </a>
+                            </div>
+                        </div>
+                    `).join('');
+
+                    // Update recordings
+                    const recordingsList = document.getElementById('recordingsList');
+                    recordingsList.innerHTML = data.recordings.map(recording => `
+                        <div class="card mb-2">
+                            <div class="card-body">
+                                <h6 class="card-title">${recording.name}</h6>
+                                <audio controls class="audio-player">
+                                    <source src="${recording.path}" type="audio/wav">
+                                </audio>
+                                <a href="${recording.path}" class="btn btn-sm btn-primary" download>
+                                    <i class="bi bi-download"></i> Download
+                                </a>
+                            </div>
+                        </div>
+                    `).join('');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    updateStatus('Error fetching device data', 'danger');
+                })
+                .finally(() => {
+                    // Hide all spinners
+                    ['contactsSpinner', 'callsSpinner', 'mediaSpinner', 'recordingsSpinner'].forEach(hideSpinner);
+                });
+        }
+
+        function startRecording() {
+            if (!currentDevice) return;
+
+            showSpinner('recordingsSpinner');
+            fetch(`/api/device/${currentDevice}/record/start`, {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        isRecording = true;
+                        document.getElementById('startRecordingBtn').style.display = 'none';
+                        document.getElementById('stopRecordingBtn').style.display = 'inline-block';
+                        updateStatus('Recording started', 'success');
+                    } else {
+                        updateStatus('Failed to start recording', 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    updateStatus('Error starting recording', 'danger');
+                })
+                .finally(() => {
+                    hideSpinner('recordingsSpinner');
+                });
+        }
+
+        function stopRecording() {
+            if (!currentDevice) return;
+
+            showSpinner('recordingsSpinner');
+            fetch(`/api/device/${currentDevice}/record/stop`, {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        isRecording = false;
+                        document.getElementById('startRecordingBtn').style.display = 'inline-block';
+                        document.getElementById('stopRecordingBtn').style.display = 'none';
+                        updateStatus('Recording stopped', 'success');
+                    } else {
+                        updateStatus('Failed to stop recording', 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    updateStatus('Error stopping recording', 'danger');
+                })
+                .finally(() => {
+                    hideSpinner('recordingsSpinner');
+                });
+        }
+
+        function initializeWebSocket() {
+            ws = new WebSocket(`ws://${window.location.host}/ws`);
+
+            ws.onopen = () => {
+                document.getElementById('wsStatus').className = 'badge bg-success';
+                document.getElementById('wsStatus').textContent = 'Connected';
+                reconnectAttempts = 0;
+            };
+
+            ws.onclose = () => {
+                document.getElementById('wsStatus').className = 'badge bg-danger';
+                document.getElementById('wsStatus').textContent = 'Disconnected';
+                if (reconnectAttempts < 5) {
+                    setTimeout(initializeWebSocket, 5000);
+                    reconnectAttempts++;
+                }
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            };
+        }
+
+        function handleWebSocketMessage(data) {
+            switch (data.type) {
+                case 'device_update':
+                    updateDeviceCard(data.device);
+                    break;
+                case 'error':
+                    logError(data.message);
+                    break;
+                case 'recording_status':
+                    updateRecordingStatus(data.status);
+                    break;
+            }
+        }
+
+        function logError(message) {
+            const errorLog = document.getElementById('errorLog');
+            errorLog.style.display = 'block';
+            const timestamp = new Date().toLocaleTimeString();
+            errorLog.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+        }
+
+        function updateDeviceCard(device) {
+            const card = document.querySelector(`[data-device-id="${device.address}"]`);
+            if (card) {
+                card.querySelector('.signal-strength').style.width = `${device.signal}%`;
+                card.querySelector('.device-status').textContent = device.status;
+                card.className = `device-card ${device.connected ? 'active' : ''}`;
+            }
+        }
+
+        function renderDevices(devices) {
+            const devicesList = document.getElementById('devicesList');
+            devicesList.innerHTML = devices.map(device => `
+                <div class="device-card list-group-item list-group-item-action d-flex justify-content-between align-items-center" data-device-id="${device.address}">
+                    <div>
+                        <div class="fw-bold">${device.name || 'Unknown Device'}</div>
+                        <div class="text-muted small">
+                            <span>Address: <span class="device-address">${device.address}</span></span>
+                            <button class="btn btn-sm btn-outline-secondary ms-2 copy-address-btn" data-address="${device.address}" title="Copy Bluetooth Address">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                        <div class="signal-strength mt-1">
+                            <span class="me-2">Signal:</span>
+                            <span class="badge bg-info">${device.rssi !== undefined ? device.rssi : 'N/A'} dBm</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary ms-3" onclick="viewDeviceData('${device.address}')">
+                        <i class="bi bi-eye"></i> View
+                    </button>
+                </div>
+            `).join('');
+            // Add copy-to-clipboard event listeners
+            document.querySelectorAll('.copy-address-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    const address = this.getAttribute('data-address');
+                    navigator.clipboard.writeText(address);
+                    updateStatus('Bluetooth address copied!', 'success');
+                    e.stopPropagation();
+                });
+            });
+        }
+
+        // Event Listeners
+        document.getElementById('scan-button').addEventListener('click', function() {
+            this.classList.add('scanning');
+            updateDevices();
+            setTimeout(() => {
+                this.classList.remove('scanning');
+            }, 10000);
+        });
+
+        document.getElementById('autoConnectToggle').addEventListener('change', function() {
+            if (this.checked) {
+                updateDevices();
+            }
+        });
+
+        document.getElementById('startRecordingBtn').addEventListener('click', startRecording);
+        document.getElementById('stopRecordingBtn').addEventListener('click', stopRecording);
+
+        // Update data every 5 seconds
+        setInterval(() => {
+            updateDevices();
+            if (currentDevice) {
+                updateDeviceData();
+            }
+        }, 5000);
+
+        // Initialize WebSocket on page load
+        document.addEventListener('DOMContentLoaded', initializeWebSocket);
+
+        // Initial update
+        updateDevices();
+    </script>
+</body>
+
+</html>
